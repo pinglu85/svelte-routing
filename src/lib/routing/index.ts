@@ -18,7 +18,7 @@ export function createRouting({
   const pathname = location.pathname;
   matchRoute(pathname);
 
-  function matchRoute(pathname) {
+  function matchRoute(pathname: string) {
     if (currComponent) currComponent.$destroy();
 
     const matchedRoute = routes.find((route) => route.url === pathname);
