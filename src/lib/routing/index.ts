@@ -15,8 +15,27 @@ export function createRouting({
   target: HTMLElement;
 }) {
   let currComponent: SvelteComponent | undefined;
-  const pathname = location.pathname;
-  matchRoute(pathname);
+  matchRoute(location.pathname);
+
+  window.addEventListener('click', (e) => {
+    const anchorTag = findAnchorTag(e.target);
+    if (!anchorTag) return;
+
+    if (anchorTag.target) return;
+
+    if (anchorTag.hasAttribute('no-routing')) return;
+
+    e.preventDefault();
+
+    const targetLocation = anchorTag.href;
+    const targetPathname = new URL(targetLocation).pathname;
+
+    // Update the URL without navigating
+    history.pushState({}, undefined, targetPathname);
+
+    // Match the component and render new content
+    matchRoute(targetPathname);
+  });
 
   function matchRoute(pathname: string) {
     if (currComponent) currComponent.$destroy();
@@ -26,22 +45,11 @@ export function createRouting({
     currComponent = new MatchedComponent({
       target,
     });
-
-    document.querySelectorAll('a').forEach((a) => {
-      a.addEventListener('click', function (e) {
-        if (a.target) return;
-
-        e.preventDefault();
-
-        const targetLocation = this.href;
-        const targetPathname = new URL(targetLocation).pathname;
-
-        // Update the URL without navigating
-        history.pushState({}, undefined, targetPathname);
-
-        // Match the component and render new content
-        matchRoute(targetPathname);
-      });
-    });
   }
+}
+
+function findAnchorTag(clickTarget: EventTarget): null | HTMLAnchorElement {
+  if (clickTarget instanceof Element) return clickTarget.closest('a');
+
+  return null;
 }
