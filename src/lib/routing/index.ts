@@ -37,6 +37,11 @@ export function createRouting({
     matchRoute(targetPathname);
   });
 
+  // Handle browser back button click
+  window.addEventListener('popstate', () => {
+    matchRoute(location.pathname);
+  });
+
   function matchRoute(pathname: string) {
     if (currComponent) currComponent.$destroy();
 
