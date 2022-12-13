@@ -1,21 +1,23 @@
 import { createRouting } from './lib/routing';
-import A from './routes/A.svelte';
-import B from './routes/B.svelte';
-import C from './routes/C.svelte';
 
 createRouting({
   routes: [
     {
       url: '/',
-      component: A,
+      // To achieve code splitting and lazy loading, we cannot directly import
+      // the component with `component: import('.../A.svelte')`, because although
+      // the dynamic import helps us create a separate file, as soon as we call
+      // `import()` the browser will download this file, so we need to call it
+      // lazily.
+      component: () => import('./routes/A.svelte'),
     },
     {
       url: '/b',
-      component: B,
+      component: () => import('./routes/B.svelte'),
     },
     {
       url: '/c',
-      component: C,
+      component: () => import('./routes/C.svelte'),
     },
   ],
   target: document.getElementById('app'),

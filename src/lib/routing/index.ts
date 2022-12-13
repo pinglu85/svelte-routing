@@ -1,10 +1,10 @@
 import type { SvelteComponent } from 'svelte';
 
-import NotFound from './NotFound.svelte';
+const NotFound = () => import('./NotFound.svelte');
 
 interface Route {
   url: string;
-  component: typeof SvelteComponent;
+  component: () => Promise<{ default: typeof SvelteComponent }>;
 }
 
 export function createRouting({
@@ -46,9 +46,11 @@ export function createRouting({
     if (currComponent) currComponent.$destroy();
 
     const matchedRoute = routes.find((route) => route.url === pathname);
-    const MatchedComponent = matchedRoute?.component ?? NotFound;
-    currComponent = new MatchedComponent({
-      target,
+    const matchedComponentPromise = matchedRoute?.component ?? NotFound;
+    matchedComponentPromise().then(({ default: matchedComponent }) => {
+      currComponent = new matchedComponent({
+        target,
+      });
     });
   }
 }
