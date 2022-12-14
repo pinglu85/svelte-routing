@@ -1,5 +1,7 @@
 import type { SvelteComponent } from 'svelte';
 
+import LoadingIndicator from './LoadingIndicator.svelte';
+
 const NotFound = () => import('./NotFound.svelte');
 
 interface Route {
@@ -15,6 +17,34 @@ export function createRouting({
   target: HTMLElement;
 }) {
   let currComponent: SvelteComponent | undefined;
+  const indicator = new LoadingIndicator({
+    target: document.body,
+  });
+
+  function matchRoute(pathname: string) {
+    const matchedRoute = routes.find((route) => route.url === pathname);
+    const matchedComponentPromise = matchedRoute?.component ?? NotFound;
+    showLoadingIndicator();
+
+    matchedComponentPromise().then(({ default: matchedComponent }) => {
+      hideLoadingIndicator();
+
+      if (currComponent) currComponent.$destroy();
+
+      currComponent = new matchedComponent({
+        target,
+      });
+    });
+  }
+
+  function showLoadingIndicator() {
+    indicator.show();
+  }
+
+  function hideLoadingIndicator() {
+    indicator.hide();
+  }
+
   matchRoute(location.pathname);
 
   window.addEventListener('click', (e) => {
@@ -41,18 +71,6 @@ export function createRouting({
   window.addEventListener('popstate', () => {
     matchRoute(location.pathname);
   });
-
-  function matchRoute(pathname: string) {
-    if (currComponent) currComponent.$destroy();
-
-    const matchedRoute = routes.find((route) => route.url === pathname);
-    const matchedComponentPromise = matchedRoute?.component ?? NotFound;
-    matchedComponentPromise().then(({ default: matchedComponent }) => {
-      currComponent = new matchedComponent({
-        target,
-      });
-    });
-  }
 }
 
 function findAnchorTag(clickTarget: EventTarget): null | HTMLAnchorElement {
