@@ -5,7 +5,8 @@ import LoadingIndicator from './LoadingIndicator.svelte';
 const NotFound = () => import('./NotFound.svelte');
 
 interface Route {
-  url: string;
+  url: RegExp;
+  params: string[];
   component: () => Promise<{ default: typeof SvelteComponent }>;
 }
 
@@ -22,7 +23,23 @@ export function createRouting({
   });
 
   function matchRoute(pathname: string) {
-    const matchedRoute = routes.find((route) => route.url === pathname);
+    const matchedRouteParams: Record<string, string> = {};
+    let matchedRoute: Route | undefined;
+
+    for (const route of routes) {
+      const match = pathname.match(route.url);
+      if (match) {
+        matchedRoute = route;
+
+        for (let i = 0; i < route.params.length; i++) {
+          const param = route.params[i];
+          matchedRouteParams[param] = match[i + 1];
+        }
+
+        break;
+      }
+    }
+
     const matchedComponentPromise = matchedRoute?.component ?? NotFound;
     showLoadingIndicator();
 
@@ -33,6 +50,7 @@ export function createRouting({
 
       currComponent = new matchedComponent({
         target,
+        props: matchedRouteParams,
       });
     });
   }
