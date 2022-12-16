@@ -17,7 +17,8 @@ export function createRouting({
   routes: Route[];
   target: HTMLElement;
 }) {
-  let currComponent: SvelteComponent | undefined;
+  let currComponent: typeof SvelteComponent | undefined;
+  let currComponentInstance: SvelteComponent | undefined;
   const indicator = new LoadingIndicator({
     target: document.body,
   });
@@ -46,12 +47,17 @@ export function createRouting({
     matchedComponentPromise().then(({ default: matchedComponent }) => {
       hideLoadingIndicator();
 
-      if (currComponent) currComponent.$destroy();
+      if (currComponent === matchedComponent) {
+        currComponentInstance.$set(matchedRouteParams);
+      } else {
+        if (currComponentInstance) currComponentInstance.$destroy();
 
-      currComponent = new matchedComponent({
-        target,
-        props: matchedRouteParams,
-      });
+        currComponentInstance = new matchedComponent({
+          target,
+          props: matchedRouteParams,
+        });
+        currComponent = matchedComponent;
+      }
     });
   }
 
