@@ -5,6 +5,7 @@ createRouting({
     {
       url: /^\/$/,
       params: [],
+      paramsMatching: [],
       // To achieve code splitting and lazy loading, we cannot directly import
       // the component with `component: import('.../A.svelte')`, because although
       // the dynamic import helps us create a separate file, as soon as we call
@@ -13,24 +14,37 @@ createRouting({
       component: () => import('./routes/A.svelte'),
     },
     {
-      url: /^\/b$/,
+      url: /^\/b\/?$/,
       params: [],
+      paramsMatching: [],
       component: () => import('./routes/B.svelte'),
     },
     {
-      url: /^\/c$/,
+      url: /^\/c\/?$/,
       params: [],
+      paramsMatching: [],
       component: () => import('./routes/C.svelte'),
     },
     {
-      url: /^\/shop\/(.+)$/,
+      url: /^\/shop\/([^/]+)\/?$/,
       params: ['shopId'],
+      paramsMatching: [],
       component: () => import('./routes/Shop.svelte'),
     },
     {
-      url: /^\/item\/(.+)\/(.+)$/,
+      url: /^\/item\/([^/]+)\/([^/]+)\/?$/,
       params: ['shopId', 'itemId'],
+      paramsMatching: [
+        (shopId) => /^\d+$/.test(shopId),
+        (itemId) => /^\d+$/.test(itemId),
+      ],
       component: () => import('./routes/Item.svelte'),
+    },
+    {
+      url: /^\/item\/([^/]+)\/([^/]+)\/?$/,
+      params: ['shopId', 'itemId'],
+      paramsMatching: [],
+      component: () => import('./routes/Haha.svelte'),
     },
   ],
   target: document.getElementById('app'),
