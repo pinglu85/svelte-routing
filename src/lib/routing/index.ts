@@ -1,8 +1,9 @@
 import type { SvelteComponent } from 'svelte';
 
+import Main from './Main.svelte';
 import LoadingIndicator from './LoadingIndicator.svelte';
 
-const NotFound = () => import('./NotFound.svelte');
+const NotFound = [() => import('./NotFound.svelte')];
 
 interface Route {
   url: RegExp;
@@ -11,7 +12,7 @@ interface Route {
     matching?: (param: string) => boolean;
     rest?: boolean;
   }>;
-  component: () => Promise<{ default: typeof SvelteComponent }>;
+  components: Array<() => Promise<{ default: typeof SvelteComponent }>>;
 }
 
 export function createRouting({
@@ -21,8 +22,7 @@ export function createRouting({
   routes: Route[];
   target: HTMLElement;
 }) {
-  let currComponent: typeof SvelteComponent | undefined;
-  let currComponentInstance: SvelteComponent | undefined;
+  let main: SvelteComponent;
   const indicator = new LoadingIndicator({
     target: document.body,
   });
@@ -57,24 +57,30 @@ export function createRouting({
       }
     }
 
-    const matchedComponentPromise = matchedRoute?.component ?? NotFound;
+    const matchedComponentPromises = matchedRoute?.components ?? NotFound;
     showLoadingIndicator();
 
-    matchedComponentPromise().then(({ default: matchedComponent }) => {
-      hideLoadingIndicator();
+    Promise.all(matchedComponentPromises.map((fn) => fn())).then(
+      (matchedComponentModules) => {
+        hideLoadingIndicator();
 
-      if (currComponent === matchedComponent) {
-        currComponentInstance.$set(matchedRouteParams);
-      } else {
-        if (currComponentInstance) currComponentInstance.$destroy();
+        const matchedComponents = matchedComponentModules.map(
+          (module) => module.default
+        );
 
-        currComponentInstance = new matchedComponent({
-          target,
-          props: matchedRouteParams,
-        });
-        currComponent = matchedComponent;
+        if (main) {
+          main.$set({ matchedComponents, matchedRouteParams });
+        } else {
+          main = new Main({
+            props: {
+              matchedComponents,
+              matchedRouteParams,
+            },
+            target,
+          });
+        }
       }
-    });
+    );
   }
 
   function showLoadingIndicator() {
