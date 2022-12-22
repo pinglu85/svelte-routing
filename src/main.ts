@@ -3,7 +3,7 @@ import { createRouting } from './lib/routing';
 createRouting({
   routes: [
     {
-      url: /^\/$/,
+      url: /^\/\/?$/,
       params: [],
       // To achieve code splitting and lazy loading, we cannot directly import
       // the component with `component: import('.../A.svelte')`, because although
