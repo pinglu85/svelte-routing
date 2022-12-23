@@ -56,7 +56,7 @@ createRouting({
       // a/1/2/
       // a/1/2/3/
       // a/1/2/3/4 -> rest: ['1', '2', '3', '4']
-      url: /^\/a(?:\/(.+))?\/?$/,
+      url: /^\/a(?:|\/(.+))\/?$/,
       params: [{ name: 'rest', rest: true }],
       components: [() => import('./routes/Rest.svelte')],
     },
