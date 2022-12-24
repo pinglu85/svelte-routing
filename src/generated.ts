@@ -3,8 +3,8 @@ import { createRouting } from './lib/routing';
 createRouting({
   routes: [
     {
-      url: /^\/a\/[...rest]\/?$/,
-      params: [],
+      url: /^\/a(?:|\/(.+))\/?$/,
+      params: [{ name: 'rest', rest: true }],
       components: [() => import('./$/a/[...rest].svelte')],
     },
     {
@@ -23,18 +23,21 @@ createRouting({
       components: [() => import('./$/index.svelte')],
     },
     {
-      url: /^\/item\/[shopId]\/[itemId]\/?$/,
-      params: [],
+      url: /^\/item\/([^/]+)\/([^/]+)\/?$/,
+      params: [
+        { name: 'shopId', rest: false },
+        { name: 'itemId', rest: false },
+      ],
       components: [() => import('./$/item/[shopId]/[itemId].svelte')],
     },
     {
-      url: /^\/item\/[shopId]\/__layout\/?$/,
-      params: [],
+      url: /^\/item\/([^/]+)\/__layout\/?$/,
+      params: [{ name: 'shopId', rest: false }],
       components: [() => import('./$/item/[shopId]/__layout.svelte')],
     },
     {
-      url: /^\/shop\/[shopId]\/?$/,
-      params: [],
+      url: /^\/shop\/([^/]+)\/?$/,
+      params: [{ name: 'shopId', rest: false }],
       components: [() => import('./$/shop/[shopId].svelte')],
     },
     {
