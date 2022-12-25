@@ -21,7 +21,7 @@ fs.writeFileSync(
     createRouting({
       routes: [
         ${routes
-          .map(({ componentPath, relativePath }) => {
+          .map(({ relativePath, components }) => {
             const { regex, params } = getRegExpAndParams(relativePath);
 
             return `{
@@ -36,7 +36,9 @@ fs.writeFileSync(
                   )
                   .join(',\n')}
               ],
-              components: [() => import('./$/${relativePath}')],
+              components: [${components
+                .map((relativePath) => `() => import('./$/${relativePath}')`)
+                .join(',')}],
             }`;
           })
           .join(',\n')}
@@ -49,6 +51,7 @@ fs.writeFileSync(
 
 function exploreFolders(rootRouteDirectory) {
   const routes = [];
+  const layouts = {};
 
   function _explore(folderPath) {
     const files = fs.readdirSync(folderPath);
@@ -56,19 +59,44 @@ function exploreFolders(rootRouteDirectory) {
     for (const file of files) {
       const filePath = path.join(folderPath, file);
       const isDirectory = fs.statSync(filePath).isDirectory();
+      const relativePath = path.relative(rootRouteDirectory, filePath);
 
       if (isDirectory) {
         _explore(filePath);
+      } else if (file === '__layout.svelte') {
+        layouts[relativePath] = {
+          componentPath: filePath,
+          relativePath,
+        };
       } else {
         routes.push({
           componentPath: filePath,
-          relativePath: path.relative(rootRouteDirectory, filePath),
+          relativePath,
+          components: [relativePath],
         });
       }
     }
   }
   _explore(rootRouteDirectory);
 
+  for (const route of routes) {
+    let dirname = route.relativePath;
+
+    while (dirname !== '.') {
+      // Get the directory
+      dirname = path.dirname(dirname);
+
+      const layoutCandidate =
+        dirname === '.' ? '__layout.svelte' : `${dirname}/__layout.svelte`;
+      const layout = layouts[layoutCandidate];
+
+      if (layout) route.components.push(layout.relativePath);
+    }
+
+    route.components.reverse();
+  }
+
+  // console.log(routes);
   return routes;
 }
 
@@ -162,7 +190,6 @@ function getRegExpAndParams(relativePath) {
     regexSegments.push(segment);
   }
 
-  console.log(regexSegments);
   return {
     regex: `/^${regexSegments.join('')}\\/?$/`,
     params,
