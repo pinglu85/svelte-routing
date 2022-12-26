@@ -5,6 +5,9 @@ const cwd = process.cwd();
 
 const outputFilePath = path.join(cwd, 'src/generated.ts');
 const inputFolder = path.join(cwd, 'src/$');
+const paramsFolder = path.join(cwd, 'src/params');
+
+const matches = new Set();
 const routes = exploreFolders(inputFolder);
 
 fs.writeFileSync(
@@ -16,22 +19,25 @@ fs.writeFileSync(
   // are converted to their string representation. For objects and
   // arrays, that means calling their `.toString()` method.
   `
+    ${Array.from(matches)
+      .map((match) => `import { match as ${match} } from './params/${match}';`)
+      .join('\n')}
     import { createRouting } from './lib/routing';
 
     createRouting({
       routes: [
         ${routes
-          .map(({ relativePath, components }) => {
-            const { regex, params } = getRegExpAndParams(relativePath);
-
+          .map(({ components, regex, params }) => {
             return `{
               url: ${regex},
               params: [
                 ${params
                   .map(
-                    ({ name, rest }) =>
-                      `{ name: ${JSON.stringify(name)}, 
-                         rest: ${rest ? 'true' : 'false'} 
+                    ({ name, rest, match }) =>
+                      `{ 
+                          name: ${JSON.stringify(name)}, 
+                          rest: ${rest ? 'true' : 'false'},
+                          matching: ${match}
                         }`
                   )
                   .join(',\n')}
@@ -79,6 +85,7 @@ function exploreFolders(rootRouteDirectory) {
   }
   _explore(rootRouteDirectory);
 
+  // Apply layouts
   for (const route of routes) {
     let dirname = route.relativePath;
 
@@ -94,6 +101,13 @@ function exploreFolders(rootRouteDirectory) {
     }
 
     route.components.reverse();
+  }
+
+  // Extract regex and params
+  for (const route of routes) {
+    const { regex, params } = getRegExpAndParams(route.relativePath);
+    route.regex = regex;
+    route.params = params;
   }
 
   // console.log(routes);
@@ -158,9 +172,23 @@ function getRegExpAndParams(relativePath) {
             );
           }
 
+          let match;
+          if (paramName.indexOf('=') > -1) {
+            [paramName, match] = paramName.split('=');
+
+            if (!fs.existsSync(path.join(paramsFolder, `${match}.ts`))) {
+              throw new Error(
+                `Invalid path ${relativePath}, unknown matching function: "${match}"`
+              );
+            }
+
+            matches.add(match);
+          }
+
           params.push({
             name: paramName,
             rest: isRest,
+            match,
           });
 
           if (!isRest) {
