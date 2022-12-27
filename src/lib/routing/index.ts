@@ -48,7 +48,29 @@ export function createRouting({
             if (!paramMatchingFn(paramValue)) continue route_matching;
           }
 
-          params[paramName] = paramIsRest ? paramValue.split('/') : paramValue;
+          if (!paramIsRest) {
+            params[paramName] = paramValue;
+          } else {
+            const paramValues: string[] = [];
+
+            let value = '';
+            for (let i = 0; i < paramValue.length; i++) {
+              const char = paramValue[i];
+
+              if (char === '/') {
+                if (value === '') break;
+
+                paramValues.push(value);
+                value = '';
+              } else {
+                value += char;
+              }
+            }
+
+            if (value !== '') paramValues.push(value);
+
+            params[paramName] = paramValues;
+          }
         }
 
         matchedRoute = route;
