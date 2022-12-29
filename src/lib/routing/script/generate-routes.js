@@ -105,10 +105,35 @@ function exploreFolders(rootRouteDirectory) {
 
   // Extract regex and params
   for (const route of routes) {
-    const { regex, params } = getRegExpAndParams(route.relativePath);
+    const { regex, params, parts } = getRegExpAndParams(route.relativePath);
     route.regex = regex;
     route.params = params;
+    route.parts = parts;
   }
+
+  routes.sort((routeA, routeB) => {
+    const partsA = routeA.parts;
+    const partsB = routeB.parts;
+
+    if (partsA.length !== partsB.length) {
+      // /a/[b]/[c] -> 3 this is more specific
+      // /a/[...rest] -> 2
+      return partsA.length < partsB.length ? 1 : -1;
+    }
+
+    for (let i = 0; i < partsA.length; i++) {
+      const partA = partsA[i];
+      const partB = partsB[i];
+
+      if (partA.dynamic !== partB.dynamic) return partA.dynamic ? 1 : -1;
+
+      if (partA.match !== partB.match) return partA.match ? -1 : 1;
+
+      if (partA.rest !== partB.rest) return partA.rest ? 1 : -1;
+    }
+
+    return routeA.relativePath < routeB.relativePath ? -1 : 1;
+  });
 
   // console.log(routes);
   return routes;
@@ -120,9 +145,14 @@ function getRegExpAndParams(relativePath) {
 
   const params = [];
   const regexSegments = [];
+  const parts = [];
 
   for (let i = 0; i < segments.length; i++) {
     let segment = segments[i];
+
+    const part = {
+      segment,
+    };
 
     if (i === segments.length - 1 && segment === 'index') {
       segment = '';
@@ -197,6 +227,10 @@ function getRegExpAndParams(relativePath) {
             regexStr += '(?:|\\/(.+))';
           }
 
+          part.dynamic = true;
+          if (isRest) part.rest = true;
+          if (match) part.match = true;
+
           isOpening = false;
           paramName = '';
         } else {
@@ -215,11 +249,13 @@ function getRegExpAndParams(relativePath) {
       segment = isRest ? regexStr : `\\/${regexStr}`;
     }
 
+    parts.push(part);
     regexSegments.push(segment);
   }
 
   return {
     regex: `/^${regexSegments.join('')}\\/?$/`,
     params,
+    parts,
   };
 }
