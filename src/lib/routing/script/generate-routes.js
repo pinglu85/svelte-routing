@@ -7,6 +7,8 @@ const outputFilePath = path.join(cwd, 'src/generated.ts');
 const inputFolder = path.join(cwd, 'src/$');
 const paramsFolder = path.join(cwd, 'src/params');
 
+const LAYOUT_REGEX = /^__layout(?:-([^@]+))?(?:@(.+))?\.svelte$/;
+
 const matches = new Set();
 const routes = exploreFolders(inputFolder);
 
@@ -69,16 +71,27 @@ function exploreFolders(rootRouteDirectory) {
 
       if (isDirectory) {
         _explore(filePath);
-      } else if (file === '__layout.svelte') {
-        layouts[relativePath] = {
+      } else if (LAYOUT_REGEX.test(file)) {
+        const match = file.match(LAYOUT_REGEX);
+        const layoutName = match[1] ?? 'default';
+        const inheritsLayout = match[2] ?? 'default';
+        const key = relativePath.replace('@' + inheritsLayout, '');
+
+        layouts[key] = {
           componentPath: filePath,
           relativePath,
+          layoutName,
+          inheritsLayout,
         };
       } else {
+        const match = file.match(/^.+?(?:@(.+))?\.svelte$/);
+        const inheritsLayout = match[1] ?? 'default';
+
         routes.push({
           componentPath: filePath,
           relativePath,
           components: [relativePath],
+          inheritsLayout,
         });
       }
     }
@@ -87,17 +100,42 @@ function exploreFolders(rootRouteDirectory) {
 
   // Apply layouts
   for (const route of routes) {
+    // console.log('------------');
+
     let dirname = route.relativePath;
+    let inheritsLayout = route.inheritsLayout;
+    // console.log(inheritsLayout);
 
-    while (dirname !== '.') {
-      // Get the directory
-      dirname = path.dirname(dirname);
+    while (true) {
+      // console.log(dirname);
 
-      const layoutCandidate =
-        dirname === '.' ? '__layout.svelte' : `${dirname}/__layout.svelte`;
+      let layoutCandidate =
+        dirname === '.' ? '__layout' : `${dirname}/__layout`;
+
+      if (inheritsLayout !== 'default') {
+        layoutCandidate += `-${inheritsLayout}`;
+      }
+      layoutCandidate += '.svelte';
+
+      let shouldGoUpALevel = false;
+
+      // console.log({ layoutCandidate });
       const layout = layouts[layoutCandidate];
 
-      if (layout) route.components.push(layout.relativePath);
+      if (layout) {
+        route.components.push(layout.relativePath);
+        shouldGoUpALevel = inheritsLayout === layout.inheritsLayout;
+        inheritsLayout = layout.inheritsLayout;
+      } else {
+        shouldGoUpALevel = true;
+      }
+
+      if (shouldGoUpALevel) {
+        if (dirname === '.') break;
+
+        // Get the directory
+        dirname = path.dirname(dirname);
+      }
     }
 
     route.components.reverse();
@@ -140,7 +178,7 @@ function exploreFolders(rootRouteDirectory) {
 }
 
 function getRegExpAndParams(relativePath) {
-  const component = relativePath.replace(/\.svelte$/, '');
+  const component = relativePath.replace(/(@.+)?\.svelte$/, '');
   const segments = component.split('/');
 
   const params = [];

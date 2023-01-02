@@ -1,5 +1,5 @@
-outer layout
+default outer layout
 
 <slot />
 
-outer layout
+default outer layout
